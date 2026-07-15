@@ -16,8 +16,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         action: #selector(toggleLaunchAtLogin),
         keyEquivalent: ""
     )
+    private let textColorMenuItem = NSMenuItem(
+        title: "Text Color…",
+        action: #selector(chooseTextColor),
+        keyEquivalent: ""
+    )
+    private let resetTextColorMenuItem = NSMenuItem(
+        title: "Reset Text Color",
+        action: #selector(resetTextColor),
+        keyEquivalent: ""
+    )
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if let savedColor = TextColorPreference.load() {
+            coordinator.setTextColor(savedColor)
+        }
         configureStatusItem()
         configureCallbacks()
         refreshLaunchAtLoginState()
@@ -42,11 +55,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusMenuItem.isEnabled = false
         enabledMenuItem.target = self
         loginMenuItem.target = self
+        textColorMenuItem.target = self
+        resetTextColorMenuItem.target = self
         enabledMenuItem.state = .on
 
         menu.addItem(statusMenuItem)
         menu.addItem(.separator())
         menu.addItem(enabledMenuItem)
+        menu.addItem(textColorMenuItem)
+        menu.addItem(resetTextColorMenuItem)
+        menu.addItem(.separator())
         menu.addItem(loginMenuItem)
         menu.addItem(.separator())
         menu.addItem(
@@ -85,6 +103,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusMenuItem.title = "Launch at Login failed: \(error.localizedDescription)"
         }
         refreshLaunchAtLoginState()
+    }
+
+    @objc private func chooseTextColor() {
+        let panel = NSColorPanel.shared
+        panel.showsAlpha = false
+        panel.isContinuous = true
+        panel.color = coordinator.textColor
+        panel.setTarget(self)
+        panel.setAction(#selector(textColorChanged))
+        NSApplication.shared.activate(ignoringOtherApps: true)
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func textColorChanged() {
+        let color = NSColorPanel.shared.color
+        coordinator.setTextColor(color)
+        TextColorPreference.save(color)
+    }
+
+    @objc private func resetTextColor() {
+        let color = NSColor.labelColor
+        coordinator.setTextColor(color)
+        TextColorPreference.reset()
+        if NSColorPanel.shared.isVisible {
+            NSColorPanel.shared.color = color
+        }
     }
 
     @objc private func quit() {

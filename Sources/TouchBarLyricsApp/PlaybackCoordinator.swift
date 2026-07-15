@@ -1,3 +1,4 @@
+@preconcurrency import AppKit
 import Foundation
 import TouchBarLyricsCore
 
@@ -18,6 +19,10 @@ final class PlaybackCoordinator {
     private var lyricLines: [LyricLine] = []
     private var displayedText: String?
     private(set) var isEnabled = true
+
+    var textColor: NSColor {
+        presenter.textColor
+    }
 
     init(
         monitor: SpotifyMonitor = SpotifyMonitor(),
@@ -77,6 +82,10 @@ final class PlaybackCoordinator {
             presenter.dismiss()
             setStatus("Touch Bar lyrics disabled")
         }
+    }
+
+    func setTextColor(_ color: NSColor) {
+        presenter.setTextColor(color)
     }
 
     private func handle(_ result: Result<PlaybackSnapshot, SpotifyReadError>) {

@@ -40,6 +40,14 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
         TBLPrivateTouchBarAPIAvailable()
     }
 
+    var textColor: NSColor {
+        label.textColor ?? .labelColor
+    }
+
+    func setTextColor(_ color: NSColor) {
+        label.textColor = color
+    }
+
     func show(text: String, dimmed: Bool) {
         label.stringValue = text
         fitFont(to: text)

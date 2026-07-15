@@ -108,6 +108,7 @@ If permission was denied:
 3. The current line appears on the Touch Bar and follows Spotify's position.
 4. Use the quote-bubble menu-bar item to:
    - Enable or disable **Show Lyrics on Touch Bar**.
+   - Choose any lyric color with **Text Color…**, or restore the default color.
    - Enable **Launch at Login**.
    - View the current status.
    - Quit the app.
