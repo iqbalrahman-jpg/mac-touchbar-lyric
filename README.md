@@ -38,7 +38,23 @@ tracks automatically selects the corresponding lyric line.
 - macOS 13 or newer (initially tested on Apple silicon with macOS 26)
 - Spotify for macOS
 - Internet access for LRCLIB lookups
-- Xcode command-line tools when building from source
+- Xcode command-line tools only when building from source
+
+## Install a prebuilt release (recommended)
+
+Prebuilt releases do not require Xcode, Homebrew, Git, or Terminal.
+
+1. Open the [latest GitHub release](https://github.com/iqbalrahman-jpg/mac-touchbar-lyric/releases/latest).
+2. Download and extract `TouchBarLyrics-v<version>-arm64.zip`.
+3. Move **Touch Bar Lyrics.app** into `/Applications`.
+4. Try opening the app once.
+5. If Gatekeeper blocks the free, non-notarized build, open **System Settings →
+   Privacy & Security**, scroll to Security, choose **Open Anyway**, and confirm
+   **Open**.
+
+Only bypass Gatekeeper when the download came from this repository and you
+trust its contents. Public releases are currently ad-hoc signed, not notarized
+by Apple.
 
 ## Install from source
 
@@ -51,8 +67,8 @@ tracks automatically selects the corresponding lyric line.
 2. Clone and enter the repository:
 
    ```sh
-   git clone https://github.com/iqbalrahman-jpg/mac-touchbar.git
-   cd mac-touchbar
+   git clone https://github.com/iqbalrahman-jpg/mac-touchbar-lyric.git
+   cd mac-touchbar-lyric
    ```
 
 3. Build, install into `~/Applications`, and launch the app:
@@ -72,21 +88,6 @@ To create a local development build and run it directly:
 ./scripts/build-app.sh
 open "build/Touch Bar Lyrics.app"
 ```
-
-### Install a prebuilt release
-
-When a release ZIP is available on the GitHub Releases page:
-
-1. Download and extract the Apple-silicon ZIP.
-2. Move **Touch Bar Lyrics.app** into `/Applications`.
-3. Try opening the app once.
-4. If Gatekeeper blocks the free, non-notarized build, open **System Settings →
-   Privacy & Security**, scroll to Security, choose **Open Anyway**, and confirm
-   **Open**.
-
-Only bypass Gatekeeper when the download came from this repository and you
-trust its contents. Public releases are currently ad-hoc signed, not notarized
-by Apple.
 
 ## First-run permission
 
@@ -167,6 +168,25 @@ Create a release-mode app bundle:
 
 ```sh
 ./scripts/build-app.sh
+```
+
+Create a validated release ZIP and SHA-256 checksum using the version from
+`Resources/Info.plist`:
+
+```sh
+./scripts/package-release.sh
+```
+
+For version `0.1.0`, publish the generated files after committing and pushing
+the release source:
+
+```sh
+gh release create v0.1.0 \
+  "build/releases/TouchBarLyrics-v0.1.0-arm64.zip" \
+  "build/releases/TouchBarLyrics-v0.1.0-arm64.zip.sha256" \
+  --repo iqbalrahman-jpg/mac-touchbar-lyric \
+  --title "Touch Bar Lyrics v0.1.0" \
+  --generate-notes
 ```
 
 The project is divided into:
