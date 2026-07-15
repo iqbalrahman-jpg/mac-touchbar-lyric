@@ -20,7 +20,8 @@ enum SpotifyReader {
             if playbackState is "stopped" then return {playbackState}
             set currentItem to current track
             return {id of currentItem, name of currentItem, artist of currentItem, ¬
-                album of currentItem, duration of currentItem, player position, playbackState}
+                album of currentItem, duration of currentItem, player position, playbackState, ¬
+                artwork url of currentItem}
         end tell
         """
 
@@ -47,10 +48,10 @@ enum SpotifyReader {
             return .success(.stopped)
         }
 
-        guard descriptor.numberOfItems == 7 else {
+        guard descriptor.numberOfItems == 8 else {
             return .failure(
                 SpotifyReadError(
-                    message: "Spotify returned \(descriptor.numberOfItems) playback fields; expected 7."
+                    message: "Spotify returned \(descriptor.numberOfItems) playback fields; expected 8."
                 )
             )
         }
@@ -77,12 +78,20 @@ enum SpotifyReader {
             return .failure(SpotifyReadError(message: "Spotify returned invalid playback timing."))
         }
 
+        let artworkURL = descriptor.atIndex(8)?.stringValue.flatMap { value -> URL? in
+            guard let url = URL(string: value),
+                  url.scheme == "https" || url.scheme == "http" else {
+                return nil
+            }
+            return url
+        }
         let track = TrackMetadata(
             id: trackID,
             title: title,
             artist: artist,
             album: album,
-            duration: durationMilliseconds / 1_000
+            duration: durationMilliseconds / 1_000,
+            artworkURL: artworkURL
         )
         return .success(PlaybackSnapshot(track: track, state: state, position: position))
     }
@@ -94,6 +103,7 @@ final class SpotifyMonitor {
 
     private var timer: Timer?
     private var pollInFlight = false
+    private var refreshRequested = false
 
     func start() {
         stop()
@@ -111,6 +121,14 @@ final class SpotifyMonitor {
         timer = nil
     }
 
+    func refresh() {
+        if pollInFlight {
+            refreshRequested = true
+        } else {
+            poll()
+        }
+    }
+
     private func poll() {
         guard !pollInFlight else { return }
         pollInFlight = true
@@ -121,6 +139,10 @@ final class SpotifyMonitor {
             guard let self else { return }
             self.pollInFlight = false
             self.onResult?(result)
+            if self.refreshRequested {
+                self.refreshRequested = false
+                self.poll()
+            }
         }
     }
 }

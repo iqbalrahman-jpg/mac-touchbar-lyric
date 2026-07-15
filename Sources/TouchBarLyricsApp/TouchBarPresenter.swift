@@ -12,8 +12,10 @@ private extension NSTouchBarItem.Identifier {
 @MainActor
 final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     var onRevealRequested: (() -> Void)?
+    var onPlaybackCommandRequested: ((SpotifyPlaybackCommand) -> Void)?
 
-    private let label = NSTextField(labelWithString: "")
+    private let artworkControl = AlbumArtworkControl()
+    private let textView = KaraokeTextView()
     private let container = NSView(frame: NSRect(x: 0, y: 0, width: 720, height: 30))
     private let touchBar = NSTouchBar()
     private var controlStripItem: NSCustomTouchBarItem?
@@ -24,7 +26,7 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
 
     override init() {
         super.init()
-        configureLabel()
+        configureContent()
         configureTouchBar()
         installControlStripItem()
         observeAppChanges()
@@ -41,17 +43,28 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     }
 
     var textColor: NSColor {
-        label.textColor ?? .labelColor
+        textView.textColor
     }
 
     func setTextColor(_ color: NSColor) {
-        label.textColor = color
+        textView.textColor = color
     }
 
-    func show(text: String, dimmed: Bool) {
-        label.stringValue = text
+    func setArtwork(_ image: NSImage?) {
+        artworkControl.setArtwork(image)
+    }
+
+    func setArtworkInteractionEnabled(_ enabled: Bool) {
+        artworkControl.setEnabled(enabled)
+    }
+
+    func setTrackTitle(_ title: String?) {
+        artworkControl.setTrackTitle(title)
+    }
+
+    func show(text: String, progress: Double? = nil, dimmed: Bool) {
         fitFont(to: text)
-        label.alphaValue = dimmed ? 0.55 : 1
+        textView.update(text: text, progress: progress, dimmed: dimmed)
         if presentationState.showContent() {
             present()
         }
@@ -95,20 +108,21 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
         onRevealRequested?()
     }
 
-    private func configureLabel() {
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.alignment = .left
-        label.font = .systemFont(ofSize: 15, weight: .medium)
-        label.lineBreakMode = .byTruncatingTail
-        label.maximumNumberOfLines = 1
-        label.usesSingleLineMode = true
-        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-
-        container.addSubview(label)
+    private func configureContent() {
+        artworkControl.translatesAutoresizingMaskIntoConstraints = false
+        textView.translatesAutoresizingMaskIntoConstraints = false
+        artworkControl.onCommandRequested = { [weak self] command in
+            self?.onPlaybackCommandRequested?(command)
+        }
+        container.addSubview(artworkControl)
+        container.addSubview(textView)
         NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 12),
-            label.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
-            label.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            artworkControl.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            artworkControl.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            textView.leadingAnchor.constraint(equalTo: artworkControl.trailingAnchor, constant: 8),
+            textView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+            textView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+            textView.heightAnchor.constraint(equalToConstant: 30),
             container.widthAnchor.constraint(equalToConstant: 720),
             container.heightAnchor.constraint(equalToConstant: 30)
         ])
@@ -117,7 +131,8 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     private func fitFont(to text: String) {
         let maximumSize: CGFloat = 15
         let minimumSize: CGFloat = 10
-        let availableWidth: CGFloat = 696
+        container.layoutSubtreeIfNeeded()
+        let availableWidth = max(1, textView.bounds.width)
         let baseFont = NSFont.systemFont(ofSize: maximumSize, weight: .medium)
         let measuredWidth = (text as NSString).size(withAttributes: [.font: baseFont]).width
         let fittedSize: CGFloat
@@ -126,7 +141,7 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
         } else {
             fittedSize = maximumSize
         }
-        label.font = .systemFont(ofSize: fittedSize, weight: .medium)
+        textView.font = .systemFont(ofSize: fittedSize, weight: .medium)
     }
 
     private func configureTouchBar() {

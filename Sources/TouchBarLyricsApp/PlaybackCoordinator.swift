@@ -10,14 +10,20 @@ final class PlaybackCoordinator {
     private let monitor: SpotifyMonitor
     private let presenter: TouchBarPresenter
     private let lyricsClient: LRCLIBClient
+    private let artworkLoader: ArtworkLoader
     private var displayTimer: Timer?
     private var fetchTask: Task<Void, Never>?
+    private var commandTask: Task<Void, Never>?
     private var cache: [String: [LyricLine]] = [:]
     private var currentTrack: TrackMetadata?
     private var timeline: PlaybackTimeline?
     private var playbackState: PlaybackState = .stopped
     private var lyricLines: [LyricLine] = []
     private var displayedText: String?
+    private var displayedProgress: Double?
+    private var displayedDimmed: Bool?
+    private var currentArtworkURL: URL?
+    private var isCommandInFlight = false
     private(set) var isEnabled = true
 
     var textColor: NSColor {
@@ -27,11 +33,13 @@ final class PlaybackCoordinator {
     init(
         monitor: SpotifyMonitor = SpotifyMonitor(),
         presenter: TouchBarPresenter = TouchBarPresenter(),
-        lyricsClient: LRCLIBClient = LRCLIBClient()
+        lyricsClient: LRCLIBClient = LRCLIBClient(),
+        artworkLoader: ArtworkLoader = ArtworkLoader()
     ) {
         self.monitor = monitor
         self.presenter = presenter
         self.lyricsClient = lyricsClient
+        self.artworkLoader = artworkLoader
 
         monitor.onResult = { [weak self] result in
             self?.handle(result)
@@ -44,6 +52,9 @@ final class PlaybackCoordinator {
                 self.setEnabled(true)
             }
         }
+        presenter.onPlaybackCommandRequested = { [weak self] command in
+            self?.perform(command)
+        }
     }
 
     func start() {
@@ -54,10 +65,10 @@ final class PlaybackCoordinator {
 
         setStatus("Waiting for Spotify…")
         monitor.start()
-        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 1.0 / 30.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.updateDisplayedLine() }
         }
-        timer.tolerance = 0.02
+        timer.tolerance = 0.005
         RunLoop.main.add(timer, forMode: .common)
         displayTimer = timer
     }
@@ -65,6 +76,9 @@ final class PlaybackCoordinator {
     func stop() {
         fetchTask?.cancel()
         fetchTask = nil
+        commandTask?.cancel()
+        commandTask = nil
+        artworkLoader.cancel()
         displayTimer?.invalidate()
         displayTimer = nil
         monitor.stop()
@@ -95,7 +109,17 @@ final class PlaybackCoordinator {
             currentTrack = nil
             lyricLines = []
             timeline = nil
-            presenter.dismiss()
+            displayedText = "Spotify unavailable"
+            displayedProgress = nil
+            displayedDimmed = true
+            currentArtworkURL = nil
+            artworkLoader.cancel()
+            presenter.setArtwork(nil)
+            presenter.setTrackTitle(nil)
+            presenter.setArtworkInteractionEnabled(false)
+            if isEnabled {
+                presenter.show(text: "Spotify unavailable", dimmed: true)
+            }
             setStatus("Spotify access failed: \(error.message)")
 
         case .success(let snapshot):
@@ -112,7 +136,18 @@ final class PlaybackCoordinator {
             lyricLines = []
             timeline = nil
             displayedText = nil
-            presenter.dismiss()
+            displayedProgress = nil
+            displayedDimmed = nil
+            currentArtworkURL = nil
+            artworkLoader.cancel()
+            presenter.setArtwork(nil)
+            presenter.setTrackTitle(nil)
+            presenter.setArtworkInteractionEnabled(false)
+            if isEnabled {
+                displayedText = "Spotify is not playing"
+                displayedDimmed = true
+                presenter.show(text: "Spotify is not playing", dimmed: true)
+            }
             setStatus("Spotify is not playing")
             return
         }
@@ -122,12 +157,16 @@ final class PlaybackCoordinator {
             state: snapshot.state,
             uptime: ProcessInfo.processInfo.systemUptime
         )
+        presenter.setTrackTitle(track.title)
+        presenter.setArtworkInteractionEnabled(!isCommandInFlight)
 
         if currentTrack?.id != track.id {
             beginTrack(track)
         } else {
+            currentTrack = track
             updateDisplayedLine()
         }
+        updateArtwork(for: track)
     }
 
     private func beginTrack(_ track: TrackMetadata) {
@@ -135,6 +174,8 @@ final class PlaybackCoordinator {
         currentTrack = track
         lyricLines = []
         displayedText = nil
+        displayedProgress = nil
+        displayedDimmed = nil
 
         if let cached = cache[track.id] {
             lyricLines = cached
@@ -156,6 +197,8 @@ final class PlaybackCoordinator {
                 self.cache[track.id] = lines
                 self.lyricLines = lines
                 self.displayedText = nil
+                self.displayedProgress = nil
+                self.displayedDimmed = nil
                 self.setStatus("Showing lyrics for \(track.title)")
                 self.updateDisplayedLine(force: true)
             } catch is CancellationError {
@@ -164,6 +207,8 @@ final class PlaybackCoordinator {
                 guard let self, self.currentTrack?.id == track.id else { return }
                 self.lyricLines = []
                 self.displayedText = "Synced lyrics unavailable"
+                self.displayedProgress = nil
+                self.displayedDimmed = self.playbackState == .paused
                 if self.isEnabled {
                     self.presenter.show(
                         text: "Synced lyrics unavailable",
@@ -180,11 +225,70 @@ final class PlaybackCoordinator {
         guard !lyricLines.isEmpty else { return }
 
         let position = timeline.position(at: ProcessInfo.processInfo.systemUptime)
-        let text = LyricSelector.currentLine(at: position, in: lyricLines)?.text ?? "♪"
-        guard force || text != displayedText else { return }
+        let progress = KaraokeProgress.current(
+            at: position,
+            in: lyricLines,
+            trackDuration: currentTrack?.duration ?? position
+        )
+        let text = progress?.line.text ?? "♪"
+        let fillProgress = text == "♪" ? nil : progress?.progress
+        let dimmed = playbackState == .paused
+        guard force
+                || text != displayedText
+                || fillProgress != displayedProgress
+                || dimmed != displayedDimmed else {
+            return
+        }
 
         displayedText = text
-        presenter.show(text: text, dimmed: playbackState == .paused)
+        displayedProgress = fillProgress
+        displayedDimmed = dimmed
+        presenter.show(
+            text: text,
+            progress: fillProgress,
+            dimmed: dimmed
+        )
+    }
+
+    private func updateArtwork(for track: TrackMetadata) {
+        guard track.artworkURL != currentArtworkURL else { return }
+        currentArtworkURL = track.artworkURL
+        presenter.setArtwork(nil)
+        artworkLoader.load(track.artworkURL) { [weak self] url, image in
+            guard let self,
+                  self.currentTrack?.artworkURL == url,
+                  self.currentArtworkURL == url else {
+                return
+            }
+            self.presenter.setArtwork(image)
+        }
+    }
+
+    private func perform(_ command: SpotifyPlaybackCommand) {
+        guard !isCommandInFlight,
+              currentTrack != nil,
+              playbackState != .stopped else {
+            return
+        }
+
+        isCommandInFlight = true
+        presenter.setArtworkInteractionEnabled(false)
+        commandTask = Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                SpotifyController.execute(command)
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            self.isCommandInFlight = false
+            self.presenter.setArtworkInteractionEnabled(
+                self.currentTrack != nil && self.playbackState != .stopped
+            )
+            switch result {
+            case .success:
+                self.monitor.refresh()
+            case .failure(let error):
+                self.setStatus("Spotify control failed: \(error.message)")
+            }
+        }
     }
 
     private func setStatus(_ status: String) {

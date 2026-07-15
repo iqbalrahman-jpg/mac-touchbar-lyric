@@ -71,6 +71,14 @@ public enum LRCParser {
 
 public enum LyricSelector {
     public static func currentLine(at position: TimeInterval, in lines: [LyricLine]) -> LyricLine? {
+        guard let index = currentLineIndex(at: position, in: lines) else { return nil }
+        return lines[index]
+    }
+
+    public static func currentLineIndex(
+        at position: TimeInterval,
+        in lines: [LyricLine]
+    ) -> Int? {
         guard !lines.isEmpty, position >= lines[0].time else { return nil }
 
         var lower = 0
@@ -83,6 +91,6 @@ public enum LyricSelector {
                 upper = middle
             }
         }
-        return lines[lower - 1]
+        return lower - 1
     }
 }

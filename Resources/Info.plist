@@ -23,7 +23,7 @@
     <key>LSUIElement</key>
     <true/>
     <key>NSAppleEventsUsageDescription</key>
-    <string>Touch Bar Lyrics reads Spotify's current track and playback position to synchronize lyrics.</string>
+    <string>Touch Bar Lyrics reads Spotify playback information and controls playback from the Touch Bar.</string>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2026 Iqbal Rahman</string>
 </dict>

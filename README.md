@@ -22,9 +22,16 @@ Bar and updates as the song progresses:
 Pausing Spotify keeps the current line visible but dims it. Seeking or changing
 tracks automatically selects the corresponding lyric line.
 
+LRCLIB provides timestamps for complete lines rather than individual words, so
+karaoke progress is estimated from the number of words and shown as a smooth
+left-to-right color fill.
+
 ## Features
 
 - Line-synchronized Spotify lyrics
+- Smooth estimated karaoke highlighting across each lyric line
+- Spotify album artwork and song title with tap-to-play/pause and
+  swipe-to-change-track gestures
 - Persistent display while using other applications
 - Left-aligned, automatically resized lyric text
 - Pause, resume, seek, and track-change synchronization
@@ -106,6 +113,8 @@ If permission was denied:
 1. Open Spotify and play a song.
 2. Wait briefly while synchronized lyrics are retrieved.
 3. The current line appears on the Touch Bar and follows Spotify's position.
+   Tap the album cover to play or pause, swipe it left for the next track, or
+   swipe it right for the previous track.
 4. Use the quote-bubble menu-bar item to:
    - Enable or disable **Show Lyrics on Touch Bar**.
    - Choose any lyric color with **Text Color…**, or restore the default color.
@@ -203,6 +212,8 @@ The project is divided into:
 ## Privacy and limitations
 
 - Track title, artist, album, and duration are sent to LRCLIB to locate lyrics.
+- Album artwork is downloaded from the URL supplied by Spotify and cached in
+  memory while the app is running.
   Spotify credentials and listening history are not collected.
 - LRCLIB data is community-maintained. Some songs have no synchronized lyrics,
   and timestamps can differ from Spotify's built-in lyric display.

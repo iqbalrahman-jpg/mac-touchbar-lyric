@@ -6,19 +6,22 @@ public struct TrackMetadata: Equatable, Sendable {
     public let artist: String
     public let album: String
     public let duration: TimeInterval
+    public let artworkURL: URL?
 
     public init(
         id: String,
         title: String,
         artist: String,
         album: String,
-        duration: TimeInterval
+        duration: TimeInterval,
+        artworkURL: URL? = nil
     ) {
         self.id = id
         self.title = title
         self.artist = artist
         self.album = album
         self.duration = duration
+        self.artworkURL = artworkURL
     }
 }
 

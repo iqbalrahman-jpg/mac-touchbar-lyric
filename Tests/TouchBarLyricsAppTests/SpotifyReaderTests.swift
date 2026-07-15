@@ -15,11 +15,13 @@ struct SpotifyReaderTests {
         descriptor.insert(.init(int32: 173_975), at: 5)
         descriptor.insert(.init(double: 60.681_999), at: 6)
         descriptor.insert(.init(string: "paused"), at: 7)
+        descriptor.insert(.init(string: "https://i.scdn.co/image/test"), at: 8)
 
         let snapshot = try SpotifyReader.decode(descriptor).get()
 
         #expect(snapshot.track?.id == "spotify:track:test")
         #expect(snapshot.track?.duration == 173.975)
+        #expect(snapshot.track?.artworkURL == URL(string: "https://i.scdn.co/image/test"))
         #expect(snapshot.position == 60.681_999)
         #expect(snapshot.state == .paused)
     }
@@ -42,7 +44,34 @@ struct SpotifyReaderTests {
         case .success:
             Issue.record("Expected malformed response to fail")
         case .failure(let error):
-            #expect(error.message == "Spotify returned 2 playback fields; expected 7.")
+            #expect(error.message == "Spotify returned 2 playback fields; expected 8.")
         }
+    }
+
+    @Test("Ignores a malformed artwork URL")
+    func ignoresMalformedArtworkURL() throws {
+        let descriptor = NSAppleEventDescriptor.list()
+        descriptor.insert(.init(string: "spotify:track:test"), at: 1)
+        descriptor.insert(.init(string: "Title"), at: 2)
+        descriptor.insert(.init(string: "Artist"), at: 3)
+        descriptor.insert(.init(string: "Album"), at: 4)
+        descriptor.insert(.init(int32: 180_000), at: 5)
+        descriptor.insert(.init(double: 30), at: 6)
+        descriptor.insert(.init(string: "playing"), at: 7)
+        descriptor.insert(.init(string: "not a url"), at: 8)
+
+        let snapshot = try SpotifyReader.decode(descriptor).get()
+
+        #expect(snapshot.track?.artworkURL == nil)
+    }
+}
+
+@Suite("Spotify playback commands")
+struct SpotifyPlaybackCommandTests {
+    @Test("Maps commands to Spotify automation terms")
+    func commandTerms() {
+        #expect(SpotifyPlaybackCommand.previous.appleScriptCommand == "previous track")
+        #expect(SpotifyPlaybackCommand.playPause.appleScriptCommand == "playpause")
+        #expect(SpotifyPlaybackCommand.next.appleScriptCommand == "next track")
     }
 }
