@@ -31,9 +31,13 @@ final class PlaybackCoordinator {
         monitor.onResult = { [weak self] result in
             self?.handle(result)
         }
-        presenter.onToggleRequested = { [weak self] in
+        presenter.onRevealRequested = { [weak self] in
             guard let self else { return }
-            self.setEnabled(!self.isEnabled)
+            if self.isEnabled {
+                self.presenter.reveal()
+            } else {
+                self.setEnabled(true)
+            }
         }
     }
 
@@ -66,6 +70,7 @@ final class PlaybackCoordinator {
         isEnabled = enabled
         onEnabledChange?(enabled)
         if enabled {
+            presenter.reveal()
             setStatus(currentTrack == nil ? "Waiting for Spotify…" : "Touch Bar lyrics enabled")
             updateDisplayedLine(force: true)
         } else {

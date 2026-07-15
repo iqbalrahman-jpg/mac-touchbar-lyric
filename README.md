@@ -112,6 +112,10 @@ If permission was denied:
    - View the current status.
    - Quit the app.
 
+If you close the lyric view on the Touch Bar, it stays hidden across lyric and
+track changes. Tap the quote-bubble Touch Bar button or re-enable **Show Lyrics
+on Touch Bar** from the menu-bar item to show it again.
+
 Typical status messages include:
 
 - `Waiting for Spotify…`

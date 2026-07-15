@@ -11,15 +11,16 @@ private extension NSTouchBarItem.Identifier {
 
 @MainActor
 final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
-    var onToggleRequested: (() -> Void)?
+    var onRevealRequested: (() -> Void)?
 
     private let label = NSTextField(labelWithString: "")
     private let container = NSView(frame: NSRect(x: 0, y: 0, width: 720, height: 30))
     private let touchBar = NSTouchBar()
     private var controlStripItem: NSCustomTouchBarItem?
-    private var shouldBeVisible = false
-    private var watchdog: Timer?
+    private var presentationState = TouchBarPresentationState()
+    private var visibilityMonitor: Timer?
     private var workspaceObserver: NSObjectProtocol?
+    private var ignoreHiddenUntil: TimeInterval = 0
 
     override init() {
         super.init()
@@ -43,15 +44,23 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
         label.stringValue = text
         fitFont(to: text)
         label.alphaValue = dimmed ? 0.55 : 1
-        shouldBeVisible = true
-        present()
-        startWatchdog()
+        if presentationState.showContent() {
+            present()
+        }
+        startVisibilityMonitor()
     }
 
     func dismiss() {
-        shouldBeVisible = false
-        stopWatchdog()
+        presentationState.hideContent()
+        stopVisibilityMonitor()
         TBLDismissTouchBar(touchBar)
+    }
+
+    func reveal() {
+        if presentationState.reveal() {
+            present()
+            startVisibilityMonitor()
+        }
     }
 
     func tearDown() {
@@ -75,7 +84,7 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     }
 
     @objc private func controlStripTapped() {
-        onToggleRequested?()
+        onRevealRequested?()
     }
 
     private func configureLabel() {
@@ -145,33 +154,44 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.shouldBeVisible else { return }
+                guard let self, self.presentationState.shouldRestoreAfterAppSwitch else {
+                    return
+                }
+                self.ignoreHiddenUntil = ProcessInfo.processInfo.systemUptime + 0.5
                 try? await Task.sleep(for: .milliseconds(150))
+                guard self.presentationState.shouldRestoreAfterAppSwitch else { return }
                 self.present()
             }
         }
     }
 
     private func present() {
-        guard shouldBeVisible, privateAPIAvailable else { return }
+        guard presentationState.shouldRestoreAfterAppSwitch, privateAPIAvailable else {
+            return
+        }
         _ = TBLPresentTouchBar(touchBar, .controlStripItem)
     }
 
-    private func startWatchdog() {
-        guard watchdog == nil else { return }
-        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+    private func startVisibilityMonitor() {
+        guard visibilityMonitor == nil else { return }
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self, self.shouldBeVisible, !self.touchBar.isVisible else { return }
-                self.present()
+                guard let self else { return }
+                let isTemporaryHide = ProcessInfo.processInfo.systemUptime
+                    < self.ignoreHiddenUntil
+                self.presentationState.observeVisibility(
+                    self.touchBar.isVisible,
+                    temporaryHide: isTemporaryHide
+                )
             }
         }
-        timer.tolerance = 0.2
+        timer.tolerance = 0.02
         RunLoop.main.add(timer, forMode: .common)
-        watchdog = timer
+        visibilityMonitor = timer
     }
 
-    private func stopWatchdog() {
-        watchdog?.invalidate()
-        watchdog = nil
+    private func stopVisibilityMonitor() {
+        visibilityMonitor?.invalidate()
+        visibilityMonitor = nil
     }
 }
