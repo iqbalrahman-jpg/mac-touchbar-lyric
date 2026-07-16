@@ -1,5 +1,6 @@
 @preconcurrency import AppKit
 import Foundation
+import QuartzCore
 import TouchBarPrivateBridge
 
 private extension NSTouchBarItem.Identifier {
@@ -26,6 +27,7 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     private var normalLayoutConstraints: [NSLayoutConstraint] = []
     private var focusLayoutConstraints: [NSLayoutConstraint] = []
     private var isArtworkFocused = false
+    private var focusTransitionID = 0
 
     override init() {
         super.init()
@@ -141,16 +143,38 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     }
 
     private func toggleArtworkFocus() {
+        container.layoutSubtreeIfNeeded()
         isArtworkFocused.toggle()
+        focusTransitionID += 1
+        let transitionID = focusTransitionID
+        let focused = isArtworkFocused
+
+        if !focused {
+            textView.isHidden = false
+            textView.alphaValue = 0
+        }
+
         NSLayoutConstraint.deactivate(
-            isArtworkFocused ? normalLayoutConstraints : focusLayoutConstraints
+            focused ? normalLayoutConstraints : focusLayoutConstraints
         )
         NSLayoutConstraint.activate(
-            isArtworkFocused ? focusLayoutConstraints : normalLayoutConstraints
+            focused ? focusLayoutConstraints : normalLayoutConstraints
         )
-        artworkControl.setFocusMode(isArtworkFocused)
-        textView.isHidden = isArtworkFocused
-        container.layoutSubtreeIfNeeded()
+        artworkControl.setFocusMode(focused)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.24
+            context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            context.allowsImplicitAnimation = true
+            textView.animator().alphaValue = focused ? 0 : 1
+            container.animator().layoutSubtreeIfNeeded()
+        } completionHandler: { [weak self] in
+            Task { @MainActor in
+                guard let self, self.focusTransitionID == transitionID else { return }
+                self.textView.isHidden = focused
+                self.textView.alphaValue = focused ? 0 : 1
+            }
+        }
     }
 
     private func fitFont(to text: String) {

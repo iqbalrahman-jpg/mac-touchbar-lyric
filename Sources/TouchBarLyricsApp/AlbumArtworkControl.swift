@@ -88,7 +88,8 @@ final class AlbumArtworkControl: NSView, NSGestureRecognizerDelegate {
     @objc private func tapped() {
         guard isEnabled else { return }
         pendingSingleTapTimer?.invalidate()
-        let timer = Timer(timeInterval: 0.26, repeats: false) { [weak self] _ in
+        let singleTapDelay = NSEvent.doubleClickInterval + 0.05
+        let timer = Timer(timeInterval: singleTapDelay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
                 self.pendingSingleTapTimer = nil
