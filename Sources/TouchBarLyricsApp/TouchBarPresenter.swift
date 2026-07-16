@@ -23,6 +23,9 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     private var visibilityMonitor: Timer?
     private var workspaceObserver: NSObjectProtocol?
     private var ignoreHiddenUntil: TimeInterval = 0
+    private var normalLayoutConstraints: [NSLayoutConstraint] = []
+    private var focusLayoutConstraints: [NSLayoutConstraint] = []
+    private var isArtworkFocused = false
 
     override init() {
         super.init()
@@ -114,18 +117,40 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
         artworkControl.onCommandRequested = { [weak self] command in
             self?.onPlaybackCommandRequested?(command)
         }
+        artworkControl.onFocusToggleRequested = { [weak self] in
+            self?.toggleArtworkFocus()
+        }
         container.addSubview(artworkControl)
         container.addSubview(textView)
-        NSLayoutConstraint.activate([
+        normalLayoutConstraints = [
             artworkControl.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            artworkControl.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             textView.leadingAnchor.constraint(equalTo: artworkControl.trailingAnchor, constant: 8),
-            textView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12),
+            textView.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -12)
+        ]
+        focusLayoutConstraints = [
+            artworkControl.centerXAnchor.constraint(equalTo: container.centerXAnchor)
+        ]
+        NSLayoutConstraint.activate([
+            artworkControl.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             textView.centerYAnchor.constraint(equalTo: container.centerYAnchor),
             textView.heightAnchor.constraint(equalToConstant: 30),
             container.widthAnchor.constraint(equalToConstant: 720),
             container.heightAnchor.constraint(equalToConstant: 30)
         ])
+        NSLayoutConstraint.activate(normalLayoutConstraints)
+    }
+
+    private func toggleArtworkFocus() {
+        isArtworkFocused.toggle()
+        NSLayoutConstraint.deactivate(
+            isArtworkFocused ? normalLayoutConstraints : focusLayoutConstraints
+        )
+        NSLayoutConstraint.activate(
+            isArtworkFocused ? focusLayoutConstraints : normalLayoutConstraints
+        )
+        artworkControl.setFocusMode(isArtworkFocused)
+        textView.isHidden = isArtworkFocused
+        container.layoutSubtreeIfNeeded()
     }
 
     private func fitFont(to text: String) {
