@@ -129,7 +129,7 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     }
 
     private func fitFont(to text: String) {
-        let maximumSize: CGFloat = 15
+        let maximumSize: CGFloat = 14
         let minimumSize: CGFloat = 10
         container.layoutSubtreeIfNeeded()
         let availableWidth = max(1, textView.bounds.width)

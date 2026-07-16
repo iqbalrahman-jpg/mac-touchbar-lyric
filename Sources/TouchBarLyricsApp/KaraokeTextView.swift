@@ -6,7 +6,7 @@ final class KaraokeTextView: NSView {
         didSet { needsDisplay = true }
     }
 
-    var font = NSFont.systemFont(ofSize: 15, weight: .medium) {
+    var font = NSFont.systemFont(ofSize: 14, weight: .medium) {
         didSet { needsDisplay = true }
     }
 
