@@ -6,18 +6,23 @@ import Testing
 @Suite("Artwork gestures")
 struct ArtworkGestureResolverTests {
     @MainActor
-    @Test("The full Touch Bar area accepts direct two-finger pinch input")
-    func directPinchConfiguration() {
-        let container = TouchBarFocusGestureView(
-            frame: NSRect(x: 0, y: 0, width: 720, height: 30)
-        )
-        let recognizers = container.gestureRecognizers.compactMap {
-            $0 as? NSMagnificationGestureRecognizer
-        }
+    @Test("The artwork group recognizes direct single and double taps")
+    func tapConfiguration() {
+        let control = AlbumArtworkControl(frame: .zero)
+        let recognizers = control.gestureRecognizers.compactMap {
+            $0 as? NSClickGestureRecognizer
+        }.sorted { $0.numberOfClicksRequired < $1.numberOfClicksRequired }
 
-        #expect(container.bounds.width == 720)
-        #expect(recognizers.count == 1)
-        #expect(recognizers.first?.allowedTouchTypes == .direct)
+        #expect(recognizers.count == 2)
+        #expect(recognizers.map(\.numberOfClicksRequired) == [1, 2])
+        #expect(recognizers.allSatisfy { $0.numberOfTouchesRequired == 1 })
+        #expect(recognizers.allSatisfy { $0.allowedTouchTypes == .direct })
+        #expect(
+            control.gestureRecognizer(
+                recognizers[0],
+                shouldRequireFailureOf: recognizers[1]
+            )
+        )
     }
 
     @Test("A left swipe selects the next track")
@@ -73,51 +78,4 @@ struct ArtworkGestureResolverTests {
         )
     }
 
-    @Test("An outward pinch enters artwork focus mode")
-    func outwardPinch() {
-        #expect(
-            ArtworkFocusGestureResolver.shouldToggle(
-                magnification: 0.1,
-                focused: false
-            )
-        )
-        #expect(
-            !ArtworkFocusGestureResolver.shouldToggle(
-                magnification: 0.1,
-                focused: true
-            )
-        )
-    }
-
-    @Test("An inward pinch exits artwork focus mode")
-    func inwardPinch() {
-        #expect(
-            ArtworkFocusGestureResolver.shouldToggle(
-                magnification: -0.1,
-                focused: true
-            )
-        )
-        #expect(
-            !ArtworkFocusGestureResolver.shouldToggle(
-                magnification: -0.1,
-                focused: false
-            )
-        )
-    }
-
-    @Test("Small pinches are ignored")
-    func smallPinches() {
-        #expect(
-            !ArtworkFocusGestureResolver.shouldToggle(
-                magnification: 0.04,
-                focused: false
-            )
-        )
-        #expect(
-            !ArtworkFocusGestureResolver.shouldToggle(
-                magnification: -0.04,
-                focused: true
-            )
-        )
-    }
 }

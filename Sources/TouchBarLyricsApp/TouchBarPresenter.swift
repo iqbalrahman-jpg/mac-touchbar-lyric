@@ -17,9 +17,7 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
 
     private let artworkControl = AlbumArtworkControl()
     private let textView = KaraokeTextView()
-    private let container = TouchBarFocusGestureView(
-        frame: NSRect(x: 0, y: 0, width: 720, height: 30)
-    )
+    private let container = NSView(frame: NSRect(x: 0, y: 0, width: 720, height: 30))
     private let touchBar = NSTouchBar()
     private var controlStripItem: NSCustomTouchBarItem?
     private var presentationState = TouchBarPresentationState()
@@ -121,16 +119,8 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
         artworkControl.onCommandRequested = { [weak self] command in
             self?.onPlaybackCommandRequested?(command)
         }
-        container.onMagnification = { [weak self] magnification in
-            guard let self,
-                  ArtworkFocusGestureResolver.shouldToggle(
-                    magnification: magnification,
-                    focused: self.isArtworkFocused
-                  ) else {
-                return false
-            }
-            self.toggleArtworkFocus()
-            return true
+        artworkControl.onFocusToggleRequested = { [weak self] in
+            self?.toggleArtworkFocus()
         }
         container.addSubview(artworkControl)
         container.addSubview(textView)

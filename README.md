@@ -31,11 +31,11 @@ left-to-right color fill.
 - Line-synchronized Spotify lyrics
 - Smooth estimated karaoke highlighting across each lyric line
 - Spotify album artwork and song title with tap-to-play/pause,
-  swipe-to-change-track, and pinch artwork focus gestures
+  swipe-to-change-track, and double-tap artwork focus gestures
 - Persistent display while using other applications
 - Left-aligned, automatically resized lyric text
 - Pause, resume, seek, and track-change synchronization
-- Menu-bar controls with no Dock icon or main window
+- Menu-bar controls and version information with no Dock icon or main window
 - Optional Launch at Login
 - No Spotify credentials or API tokens
 
@@ -142,20 +142,15 @@ If permission was denied:
 
 ### Touch Bar gestures
 
-Start tap and swipe gestures on the album cover/title group. Pinch gestures can
-start anywhere across the app's Touch Bar area, which makes the inward gesture
-easier when restoring the lyrics.
+Start each gesture on the album cover/title group. A single tap waits briefly to
+make sure it is not the first half of a double-tap before controlling Spotify.
 
 | Gesture | Result |
 | --- | --- |
 | Tap | Play or pause Spotify |
+| Double-tap | Hide the lyrics and center the cover/title group; double-tap again to restore the lyrics |
 | Swipe left | Play the next track |
 | Swipe right | Play the previous track |
-| Pinch outward with two fingers | Hide the lyrics and center the cover/title group |
-| Pinch inward with two fingers | Restore the normal cover, title, and lyrics layout |
-
-Pinch gestures require a physical Touch Bar. Xcode's virtual Touch Bar does not
-support two-finger input.
 
 ### Menu-bar controls
 
@@ -164,6 +159,7 @@ Click the quote-bubble icon in the macOS menu bar to access these controls:
 | Control | Result |
 | --- | --- |
 | Current status | Shows whether the app is waiting, loading, displaying lyrics, or reporting a problem |
+| Version | Shows the installed app version and build number |
 | **Show Lyrics on Touch Bar** | Shows or hides the complete Touch Bar view |
 | **Text Color…** | Opens the macOS color picker and updates the lyric color immediately |
 | **Reset Text Color** | Restores the default adaptive macOS text color |

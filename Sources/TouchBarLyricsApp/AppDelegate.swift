@@ -6,6 +6,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let coordinator = PlaybackCoordinator()
     private var statusItem: NSStatusItem?
     private let statusMenuItem = NSMenuItem(title: "Starting…", action: nil, keyEquivalent: "")
+    private let versionMenuItem = NSMenuItem(
+        title: AppVersion.menuTitle(infoDictionary: Bundle.main.infoDictionary),
+        action: nil,
+        keyEquivalent: ""
+    )
     private let enabledMenuItem = NSMenuItem(
         title: "Show Lyrics on Touch Bar",
         action: #selector(toggleLyrics),
@@ -53,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         statusMenuItem.isEnabled = false
+        versionMenuItem.isEnabled = false
         enabledMenuItem.target = self
         loginMenuItem.target = self
         textColorMenuItem.target = self
@@ -60,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         enabledMenuItem.state = .on
 
         menu.addItem(statusMenuItem)
+        menu.addItem(versionMenuItem)
         menu.addItem(.separator())
         menu.addItem(enabledMenuItem)
         menu.addItem(textColorMenuItem)
