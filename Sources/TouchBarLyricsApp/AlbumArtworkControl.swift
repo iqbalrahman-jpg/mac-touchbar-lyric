@@ -44,14 +44,11 @@ enum ArtworkFocusGestureResolver {
 @MainActor
 final class AlbumArtworkControl: NSView {
     var onCommandRequested: ((SpotifyPlaybackCommand) -> Void)?
-    var onFocusToggleRequested: (() -> Void)?
 
     private let imageView = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "Spotify")
     private var imageLeadingConstraint: NSLayoutConstraint!
     private var currentVisualOffset: CGFloat = 0
-    private var isFocused = false
-    private var hasHandledCurrentPinch = false
     private(set) var isEnabled = false {
         didSet { alphaValue = isEnabled ? 1 : 0.4 }
     }
@@ -92,39 +89,12 @@ final class AlbumArtworkControl: NSView {
 
     func setFocusMode(_ focused: Bool) {
         resetTranslation()
-        isFocused = focused
         updateAccessibilityHelp(focused: focused)
     }
 
     @objc private func tapped() {
         guard isEnabled else { return }
         onCommandRequested?(.playPause)
-    }
-
-    @objc private func magnified(_ recognizer: NSMagnificationGestureRecognizer) {
-        switch recognizer.state {
-        case .began:
-            hasHandledCurrentPinch = false
-
-        case .changed, .ended:
-            if !hasHandledCurrentPinch,
-               ArtworkFocusGestureResolver.shouldToggle(
-                magnification: recognizer.magnification,
-                focused: isFocused
-               ) {
-                hasHandledCurrentPinch = true
-                onFocusToggleRequested?()
-            }
-            if recognizer.state == .ended {
-                hasHandledCurrentPinch = false
-            }
-
-        case .cancelled, .failed:
-            hasHandledCurrentPinch = false
-
-        default:
-            break
-        }
     }
 
     @objc private func panned(_ recognizer: NSPanGestureRecognizer) {
@@ -196,20 +166,14 @@ final class AlbumArtworkControl: NSView {
 
     private func configureGestures() {
         let singleClick = NSClickGestureRecognizer(target: self, action: #selector(tapped))
-        let magnification = NSMagnificationGestureRecognizer(
-            target: self,
-            action: #selector(magnified)
-        )
         let pan = NSPanGestureRecognizer(target: self, action: #selector(panned))
         allowedTouchTypes = .direct
         singleClick.allowedTouchTypes = .direct
         singleClick.numberOfTouchesRequired = 1
         singleClick.numberOfClicksRequired = 1
-        magnification.allowedTouchTypes = .direct
         pan.allowedTouchTypes = .direct
         pan.numberOfTouchesRequired = 1
         addGestureRecognizer(singleClick)
-        addGestureRecognizer(magnification)
         addGestureRecognizer(pan)
     }
 

@@ -142,7 +142,9 @@ If permission was denied:
 
 ### Touch Bar gestures
 
-Start each gesture on the album cover/title group.
+Start tap and swipe gestures on the album cover/title group. Pinch gestures can
+start anywhere across the app's Touch Bar area, which makes the inward gesture
+easier when restoring the lyrics.
 
 | Gesture | Result |
 | --- | --- |

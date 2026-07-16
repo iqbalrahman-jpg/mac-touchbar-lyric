@@ -6,13 +6,16 @@ import Testing
 @Suite("Artwork gestures")
 struct ArtworkGestureResolverTests {
     @MainActor
-    @Test("The artwork control accepts direct two-finger pinch input")
+    @Test("The full Touch Bar area accepts direct two-finger pinch input")
     func directPinchConfiguration() {
-        let control = AlbumArtworkControl(frame: .zero)
-        let recognizers = control.gestureRecognizers.compactMap {
+        let container = TouchBarFocusGestureView(
+            frame: NSRect(x: 0, y: 0, width: 720, height: 30)
+        )
+        let recognizers = container.gestureRecognizers.compactMap {
             $0 as? NSMagnificationGestureRecognizer
         }
 
+        #expect(container.bounds.width == 720)
         #expect(recognizers.count == 1)
         #expect(recognizers.first?.allowedTouchTypes == .direct)
     }
