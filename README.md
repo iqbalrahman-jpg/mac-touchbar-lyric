@@ -47,7 +47,33 @@ left-to-right color fill.
 - Internet access for LRCLIB lookups
 - Xcode command-line tools only when building from source
 
-## Install a prebuilt release (recommended)
+## Install with Homebrew (recommended)
+
+Install the latest release from the official Touch Bar Lyrics tap:
+
+```sh
+brew install --cask iqbalrahman-jpg/tap/touch-bar-lyrics
+```
+
+Homebrew automatically downloads the correct release and places **Touch Bar
+Lyrics.app** in `/Applications`.
+
+Current releases are ad-hoc signed and not notarized. If macOS blocks the first
+launch, open **System Settings → Privacy & Security**, choose **Open Anyway** for
+Touch Bar Lyrics, and confirm **Open**. Only approve the app when it came from
+this repository.
+
+To upgrade later:
+
+```sh
+brew update
+brew upgrade --cask iqbalrahman-jpg/tap/touch-bar-lyrics
+```
+
+The cask is maintained in
+[iqbalrahman-jpg/homebrew-tap](https://github.com/iqbalrahman-jpg/homebrew-tap).
+
+## Install a prebuilt release
 
 Prebuilt releases do not require Xcode, Homebrew, Git, or Terminal.
 
@@ -193,14 +219,26 @@ second.
 
 ## Uninstall
 
-From the repository directory:
+If installed with Homebrew:
+
+```sh
+brew uninstall --cask iqbalrahman-jpg/tap/touch-bar-lyrics
+```
+
+To also remove the saved lyric color preference:
+
+```sh
+brew uninstall --zap --cask iqbalrahman-jpg/tap/touch-bar-lyrics
+```
+
+If installed from source, run this from the repository directory:
 
 ```sh
 ./scripts/uninstall.sh
 ```
 
-You can also quit the app and delete `~/Applications/Touch Bar Lyrics.app`
-manually.
+You can also quit the app and delete **Touch Bar Lyrics.app** manually from
+`/Applications` or `~/Applications`.
 
 ## Privacy and limitations
 

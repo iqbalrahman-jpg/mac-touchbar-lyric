@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT="${0:A:h:h}"
 INFO_PLIST="$ROOT/Resources/Info.plist"
 PACKAGE_SCRIPT="$ROOT/scripts/package-release.sh"
+HOMEBREW_UPDATE_SCRIPT="$ROOT/scripts/update-homebrew-cask.sh"
 RELEASE_DIR="$ROOT/build/releases"
 REPOSITORY="iqbalrahman-jpg/mac-touchbar-lyric"
 DRY_RUN=0
@@ -54,12 +55,14 @@ CHECKSUM_NAME="${ARCHIVE_NAME}.sha256"
 ARCHIVE="$RELEASE_DIR/$ARCHIVE_NAME"
 CHECKSUM="$RELEASE_DIR/$CHECKSUM_NAME"
 
-for command_name in git gh swift codesign shasum perl; do
+for command_name in git gh swift codesign shasum perl brew curl; do
     command -v "$command_name" >/dev/null \
         || fail "Required command is unavailable: $command_name"
 done
 
 [[ -x "$PACKAGE_SCRIPT" ]] || fail "Missing executable: $PACKAGE_SCRIPT"
+[[ -x "$HOMEBREW_UPDATE_SCRIPT" ]] \
+    || fail "Missing executable: $HOMEBREW_UPDATE_SCRIPT"
 
 cd "$ROOT"
 
@@ -106,6 +109,7 @@ PLIST_CHANGED=0
 RELEASE_COMMITTED=0
 PUSHED=0
 RELEASE_CREATED=0
+HOMEBREW_UPDATED=0
 
 cleanup() {
     local exit_status=$?
@@ -126,6 +130,10 @@ cleanup() {
         echo "The release commit and tag were pushed, but the GitHub Release failed." >&2
         echo "Retry publication with:" >&2
         echo "  gh release create $TAG '$ARCHIVE' '$CHECKSUM' --repo $REPOSITORY --verify-tag --title 'Touch Bar Lyrics $TAG' --generate-notes" >&2
+    elif (( exit_status != 0 && RELEASE_CREATED && ! HOMEBREW_UPDATED )); then
+        echo "The app release was published, but the Homebrew tap update failed." >&2
+        echo "Retry the tap update with:" >&2
+        echo "  '$HOMEBREW_UPDATE_SCRIPT' '$VERSION' '$ARCHIVE_SHA256'" >&2
     fi
 
     return "$exit_status"
@@ -163,6 +171,7 @@ EMBEDDED_VERSION="$(/usr/libexec/PlistBuddy \
     cd "$RELEASE_DIR"
     shasum -a 256 -c "$CHECKSUM_NAME"
 )
+ARCHIVE_SHA256="$(shasum -a 256 "$ARCHIVE" | awk '{print $1}')"
 
 echo ""
 echo "Release ready for review:"
@@ -171,10 +180,12 @@ echo "  Build:    $NEXT_BUILD"
 echo "  Tag:      $TAG"
 echo "  Archive:  $ARCHIVE"
 echo "  Checksum: $CHECKSUM"
+echo "  SHA-256:  $ARCHIVE_SHA256"
 echo ""
 git --no-pager diff -- "$INFO_PLIST"
 
 if (( DRY_RUN )); then
+    "$HOMEBREW_UPDATE_SCRIPT" "$VERSION" "$ARCHIVE_SHA256" --dry-run
     echo "Dry run complete. Nothing was committed, pushed, or published."
     exit 0
 fi
@@ -210,6 +221,9 @@ gh release create "$TAG" \
     --title "Touch Bar Lyrics $TAG" \
     --generate-notes
 RELEASE_CREATED=1
+
+"$HOMEBREW_UPDATE_SCRIPT" "$VERSION" "$ARCHIVE_SHA256"
+HOMEBREW_UPDATED=1
 
 PLIST_CHANGED=0
 rm -f "$PLIST_BACKUP"
