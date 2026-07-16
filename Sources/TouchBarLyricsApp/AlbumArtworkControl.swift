@@ -30,18 +30,28 @@ enum ArtworkGestureResolver {
     }
 }
 
+enum ArtworkFocusGestureResolver {
+    static let magnificationThreshold: CGFloat = 0.08
+
+    static func shouldToggle(magnification: CGFloat, focused: Bool) -> Bool {
+        if focused {
+            return magnification <= -magnificationThreshold
+        }
+        return magnification >= magnificationThreshold
+    }
+}
+
 @MainActor
-final class AlbumArtworkControl: NSView, NSGestureRecognizerDelegate {
+final class AlbumArtworkControl: NSView {
     var onCommandRequested: ((SpotifyPlaybackCommand) -> Void)?
     var onFocusToggleRequested: (() -> Void)?
 
     private let imageView = NSImageView()
     private let titleLabel = NSTextField(labelWithString: "Spotify")
     private var imageLeadingConstraint: NSLayoutConstraint!
-    private var singleClickRecognizer: NSClickGestureRecognizer!
-    private var doubleClickRecognizer: NSClickGestureRecognizer!
-    private var pendingSingleTapTimer: Timer?
     private var currentVisualOffset: CGFloat = 0
+    private var isFocused = false
+    private var hasHandledCurrentPinch = false
     private(set) var isEnabled = false {
         didSet { alphaValue = isEnabled ? 1 : 0.4 }
     }
@@ -82,28 +92,39 @@ final class AlbumArtworkControl: NSView, NSGestureRecognizerDelegate {
 
     func setFocusMode(_ focused: Bool) {
         resetTranslation()
+        isFocused = focused
         updateAccessibilityHelp(focused: focused)
     }
 
     @objc private func tapped() {
         guard isEnabled else { return }
-        pendingSingleTapTimer?.invalidate()
-        let singleTapDelay = NSEvent.doubleClickInterval + 0.05
-        let timer = Timer(timeInterval: singleTapDelay, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                guard let self else { return }
-                self.pendingSingleTapTimer = nil
-                self.onCommandRequested?(.playPause)
-            }
-        }
-        RunLoop.main.add(timer, forMode: .common)
-        pendingSingleTapTimer = timer
+        onCommandRequested?(.playPause)
     }
 
-    @objc private func doubleTapped() {
-        pendingSingleTapTimer?.invalidate()
-        pendingSingleTapTimer = nil
-        onFocusToggleRequested?()
+    @objc private func magnified(_ recognizer: NSMagnificationGestureRecognizer) {
+        switch recognizer.state {
+        case .began:
+            hasHandledCurrentPinch = false
+
+        case .changed, .ended:
+            if !hasHandledCurrentPinch,
+               ArtworkFocusGestureResolver.shouldToggle(
+                magnification: recognizer.magnification,
+                focused: isFocused
+               ) {
+                hasHandledCurrentPinch = true
+                onFocusToggleRequested?()
+            }
+            if recognizer.state == .ended {
+                hasHandledCurrentPinch = false
+            }
+
+        case .cancelled, .failed:
+            hasHandledCurrentPinch = false
+
+        default:
+            break
+        }
     }
 
     @objc private func panned(_ recognizer: NSPanGestureRecognizer) {
@@ -175,38 +196,21 @@ final class AlbumArtworkControl: NSView, NSGestureRecognizerDelegate {
 
     private func configureGestures() {
         let singleClick = NSClickGestureRecognizer(target: self, action: #selector(tapped))
-        let doubleClick = NSClickGestureRecognizer(
+        let magnification = NSMagnificationGestureRecognizer(
             target: self,
-            action: #selector(doubleTapped)
+            action: #selector(magnified)
         )
         let pan = NSPanGestureRecognizer(target: self, action: #selector(panned))
         allowedTouchTypes = .direct
         singleClick.allowedTouchTypes = .direct
         singleClick.numberOfTouchesRequired = 1
         singleClick.numberOfClicksRequired = 1
-        singleClick.delegate = self
-        doubleClick.allowedTouchTypes = .direct
-        doubleClick.numberOfTouchesRequired = 1
-        doubleClick.numberOfClicksRequired = 2
-        doubleClick.delegate = self
+        magnification.allowedTouchTypes = .direct
         pan.allowedTouchTypes = .direct
         pan.numberOfTouchesRequired = 1
-        singleClickRecognizer = singleClick
-        doubleClickRecognizer = doubleClick
         addGestureRecognizer(singleClick)
-        addGestureRecognizer(doubleClick)
+        addGestureRecognizer(magnification)
         addGestureRecognizer(pan)
-    }
-
-    func gestureRecognizer(
-        _ gestureRecognizer: NSGestureRecognizer,
-        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: NSGestureRecognizer
-    ) -> Bool {
-        let isClickPair = gestureRecognizer === singleClickRecognizer
-            && otherGestureRecognizer === doubleClickRecognizer
-        let isReverseClickPair = gestureRecognizer === doubleClickRecognizer
-            && otherGestureRecognizer === singleClickRecognizer
-        return isClickPair || isReverseClickPair
     }
 
     private func resetTranslation() {
@@ -267,12 +271,12 @@ final class AlbumArtworkControl: NSView, NSGestureRecognizerDelegate {
     private func updateAccessibilityHelp(focused: Bool) {
         if focused {
             setAccessibilityHelp(
-                "Tap to play or pause. Double tap to show lyrics. "
+                "Tap to play or pause. Pinch inward to show lyrics. "
                     + "Swipe left or right to change tracks."
             )
         } else {
             setAccessibilityHelp(
-                "Tap to play or pause. Double tap to focus the album cover and title. "
+                "Tap to play or pause. Pinch outward to focus the album cover and title. "
                     + "Swipe left or right to change tracks."
             )
         }

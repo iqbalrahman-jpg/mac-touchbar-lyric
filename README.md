@@ -31,7 +31,7 @@ left-to-right color fill.
 - Line-synchronized Spotify lyrics
 - Smooth estimated karaoke highlighting across each lyric line
 - Spotify album artwork and song title with tap-to-play/pause,
-  swipe-to-change-track, and double-tap artwork focus gestures
+  swipe-to-change-track, and pinch artwork focus gestures
 - Persistent display while using other applications
 - Left-aligned, automatically resized lyric text
 - Pause, resume, seek, and track-change synchronization
@@ -114,9 +114,9 @@ If permission was denied:
 2. Wait briefly while synchronized lyrics are retrieved.
 3. The current line appears on the Touch Bar and follows Spotify's position.
    Tap the album cover/title group to play or pause, swipe it left for the next
-   track, or swipe it right for the previous track. Double tap the group to hide
-   the lyrics and center the album cover and title. Double tap the centered group
-   to restore the normal lyrics view.
+   track, or swipe it right for the previous track. Pinch outward on the group to
+   hide the lyrics and center the album cover and title. Pinch inward on the
+   centered group to restore the normal lyrics view.
 4. Use the quote-bubble menu-bar item to:
    - Enable or disable **Show Lyrics on Touch Bar**.
    - Choose any lyric color with **Text Color…**, or restore the default color.

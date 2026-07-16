@@ -1,9 +1,22 @@
+import AppKit
 import CoreGraphics
 import Testing
 @testable import TouchBarLyricsApp
 
 @Suite("Artwork gestures")
 struct ArtworkGestureResolverTests {
+    @MainActor
+    @Test("The artwork control accepts direct two-finger pinch input")
+    func directPinchConfiguration() {
+        let control = AlbumArtworkControl(frame: .zero)
+        let recognizers = control.gestureRecognizers.compactMap {
+            $0 as? NSMagnificationGestureRecognizer
+        }
+
+        #expect(recognizers.count == 1)
+        #expect(recognizers.first?.allowedTouchTypes == .direct)
+    }
+
     @Test("A left swipe selects the next track")
     func leftSwipe() {
         let command = ArtworkGestureResolver.command(
@@ -54,6 +67,54 @@ struct ArtworkGestureResolverTests {
                 translation: CGPoint(x: 10, y: 20),
                 velocity: CGPoint(x: 400, y: 0)
             ) == nil
+        )
+    }
+
+    @Test("An outward pinch enters artwork focus mode")
+    func outwardPinch() {
+        #expect(
+            ArtworkFocusGestureResolver.shouldToggle(
+                magnification: 0.1,
+                focused: false
+            )
+        )
+        #expect(
+            !ArtworkFocusGestureResolver.shouldToggle(
+                magnification: 0.1,
+                focused: true
+            )
+        )
+    }
+
+    @Test("An inward pinch exits artwork focus mode")
+    func inwardPinch() {
+        #expect(
+            ArtworkFocusGestureResolver.shouldToggle(
+                magnification: -0.1,
+                focused: true
+            )
+        )
+        #expect(
+            !ArtworkFocusGestureResolver.shouldToggle(
+                magnification: -0.1,
+                focused: false
+            )
+        )
+    }
+
+    @Test("Small pinches are ignored")
+    func smallPinches() {
+        #expect(
+            !ArtworkFocusGestureResolver.shouldToggle(
+                magnification: 0.04,
+                focused: false
+            )
+        )
+        #expect(
+            !ArtworkFocusGestureResolver.shouldToggle(
+                magnification: -0.04,
+                focused: true
+            )
         )
     }
 }
