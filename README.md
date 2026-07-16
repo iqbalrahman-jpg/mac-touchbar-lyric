@@ -112,17 +112,47 @@ If permission was denied:
 
 1. Open Spotify and play a song.
 2. Wait briefly while synchronized lyrics are retrieved.
-3. The current line appears on the Touch Bar and follows Spotify's position.
-   Tap the album cover/title group to play or pause, swipe it left for the next
-   track, or swipe it right for the previous track. Pinch outward on the group to
-   hide the lyrics and center the album cover and title. Pinch inward on the
-   centered group to restore the normal lyrics view.
-4. Use the quote-bubble menu-bar item to:
-   - Enable or disable **Show Lyrics on Touch Bar**.
-   - Choose any lyric color with **Text Color…**, or restore the default color.
-   - Enable **Launch at Login**.
-   - View the current status.
-   - Quit the app.
+3. The album cover, song title, and current lyric line appear on the Touch Bar.
+
+### Touch Bar gestures
+
+Start each gesture on the album cover/title group.
+
+| Gesture | Result |
+| --- | --- |
+| Tap | Play or pause Spotify |
+| Swipe left | Play the next track |
+| Swipe right | Play the previous track |
+| Pinch outward with two fingers | Hide the lyrics and center the cover/title group |
+| Pinch inward with two fingers | Restore the normal cover, title, and lyrics layout |
+
+Pinch gestures require a physical Touch Bar. Xcode's virtual Touch Bar does not
+support two-finger input.
+
+### Menu-bar controls
+
+Click the quote-bubble icon in the macOS menu bar to access these controls:
+
+| Control | Result |
+| --- | --- |
+| Current status | Shows whether the app is waiting, loading, displaying lyrics, or reporting a problem |
+| **Show Lyrics on Touch Bar** | Shows or hides the complete Touch Bar view |
+| **Text Color…** | Opens the macOS color picker and updates the lyric color immediately |
+| **Reset Text Color** | Restores the default adaptive macOS text color |
+| **Launch at Login** | Starts Touch Bar Lyrics automatically after signing in |
+| **Quit Touch Bar Lyrics** | Stops the app and removes its Touch Bar content |
+
+The selected lyric color is saved and restored the next time the app launches.
+
+### Automatic behavior
+
+- The current lyric line follows Spotify's playback position.
+- Karaoke highlighting fills smoothly from left to right during each line.
+- Pausing keeps the current line visible but dims it.
+- Seeking resynchronizes the lyric position.
+- Changing tracks updates the cover, title, and synchronized lyrics.
+- Long lyric lines automatically use a smaller font.
+- The Touch Bar view stays available while using other applications.
 
 If you close the lyric view on the Touch Bar, it stays hidden across lyric and
 track changes. Tap the quote-bubble Touch Bar button or re-enable **Show Lyrics
@@ -171,45 +201,6 @@ From the repository directory:
 
 You can also quit the app and delete `~/Applications/Touch Bar Lyrics.app`
 manually.
-
-## Development
-
-Run all tests:
-
-```sh
-swift test
-```
-
-Create a release-mode app bundle:
-
-```sh
-./scripts/build-app.sh
-```
-
-Create a validated release ZIP and SHA-256 checksum using the version from
-`Resources/Info.plist`:
-
-```sh
-./scripts/package-release.sh
-```
-
-For version `0.1.0`, publish the generated files after committing and pushing
-the release source:
-
-```sh
-gh release create v0.1.0 \
-  "build/releases/TouchBarLyrics-v0.1.0-arm64.zip" \
-  "build/releases/TouchBarLyrics-v0.1.0-arm64.zip.sha256" \
-  --repo iqbalrahman-jpg/mac-touchbar-lyric \
-  --title "Touch Bar Lyrics v0.1.0" \
-  --generate-notes
-```
-
-The project is divided into:
-
-- `TouchBarLyricsCore`: lyric parsing, metadata matching, and playback timing
-- `TouchBarLyricsApp`: Spotify automation and menu-bar lifecycle
-- `TouchBarPrivateBridge`: the unsupported system-wide Touch Bar integration
 
 ## Privacy and limitations
 
